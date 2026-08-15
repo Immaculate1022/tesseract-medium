@@ -42,6 +42,12 @@ python examples/fibonacci_lattice_walk.py
 python examples/orientation_demo.py
 ```
 
+### Verified results (v0.1)
+
+- **Orientation demo** — loop crossing the twist seam reverses orientation (`sign = −1`); control loop away from the seam preserves orientation (`sign = +1`).
+- **Lattice** — depth-2 φ/Fibonacci subdivision yields 625 points; hierarchical indices are stable and usable as storage keys.
+- **Dynamics** — classical and Möbius-twisted Mandelbrot slices render successfully to PNG.
+
 ---
 
 ## Package layout
@@ -78,12 +84,13 @@ examples/
 | [research / tesseract-medium-geometry.md](https://github.com/Immaculate1022/research/blob/main/tesseract-medium-geometry.md) | Formal specification this code implements |
 | [moebius-llama](https://github.com/Immaculate1022/moebius-llama) | Self-reflective transformer architecture that uses Möbius + φ ideas; this geometry is a natural substrate |
 | [IOF-Resonance-Core](https://github.com/Immaculate1022/IOF-Resonance-Core) | High-dimensional resonance / topological computing platform |
+| [pegaconstellation-hub](https://github.com/Immaculate1022/pegaconstellation-hub) | Central map and status pulse |
 
 ---
 
 ## Status
 
-- **v0.1** — Minimal working substrate: lattice, dynamics, orientation tracker, three examples.
+- **v0.1** — Minimal working substrate: lattice, dynamics, orientation tracker, three examples. **Verified runnable.**
 - Further mathematical formalization and performance-oriented ports are open under the AI-first maintenance model.
 
 ---
