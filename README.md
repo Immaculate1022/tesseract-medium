@@ -15,6 +15,8 @@ The [Tesseract Medium Geometry](https://github.com/Immaculate1022/research/blob/
 - Fibonacci / golden-ratio (φ) recursive scaling
 - Mandelbrot-type fractal dynamics
 - Residence in a tesseract (4-dimensional hypercube) vector medium
+- **Infinite kaleidoscopic branching at vertices with mirror images**
+- **Layered multi-sheet structure** (stacked like a fanned pack of paper at arbitrary angles with controlled variance so layers do not interfere)
 
 This repository is the **runnable substrate**. It turns the abstract object into code that you (or any AI system) can execute, visualize, and build on.
 
@@ -26,6 +28,25 @@ This repository is the **runnable substrate**. It turns the abstract object into
 | Orientation-aware state transport | Parallel-transport monodromy tracker (`orientation.py`) |
 | Immediate visual feedback | Möbius-twisted Mandelbrot / Julia slices (`dynamics.py` + examples) |
 | Reusable geometric kernel | Clean modules other PegaConstellation projects can import |
+| Infinite self-similar branching | Target aesthetic & future extension: kaleidoscopic mirrors at every vertex |
+| Multi-layer non-interfering medium | Target aesthetic & future extension: angled sheets with small variance |
+
+---
+
+## Geometric Vision (updated 2026-08-26)
+
+### Infinite Kaleidoscopic Branching + Mirrors
+At every vertex the structure branches kaleidoscopically, spawning recursive mirror images of the local tesseract neighborhood. Branches continue infinitely, producing a fractal web of hypercubes and their reflections that remains compatible with the global Möbius / Klein orientation rules.
+
+### Layered Multi-Sheet Medium
+The complete geometry is realized as a stack of slightly offset sheets — analogous to a fanned pack of translucent paper:
+
+- Each sheet carries a full tesseract + mirror + kaleidoscopic structure.
+- Sheets may be tilted at any chosen angles.
+- Small positional / rotational / shear variance ensures no two sheets occupy identical coordinates.
+- Result: dense volumetric presence without destructive interference. Orientation transport and hierarchical keys stay clean on every layer.
+
+These ideas are now part of the formal specification and serve as the visual and structural targets for ongoing development of the lattice, dynamics, and visualization modules.
 
 ---
 
@@ -69,11 +90,11 @@ examples/
 
 ## Core ideas in code
 
-**Lattice** — A discrete 4D hypercube whose edges and cells can be subdivided by successive Fibonacci ratios or pure powers of φ. This is the spatial medium.
+**Lattice** — A discrete 4D hypercube whose edges and cells can be subdivided by successive Fibonacci ratios or pure powers of φ. This is the spatial medium. Future extensions will support kaleidoscopic branching operators and multi-sheet layering with angular/positional variance.
 
 **Dynamics** — Iteration of the form `z ↦ M(z² + c)` where `M` is a Möbius transformation. Classic Mandelbrot / Julia sets appear as 2D slices; the Möbius map injects controlled twist / inversion.
 
-**Orientation** — Parallel transport of a discrete frame around closed loops in the lattice. After a full circuit the frame may return flipped — the concrete signature of the Möbius / Klein structure.
+**Orientation** — Parallel transport of a discrete frame around closed loops in the lattice. After a full circuit the frame may return flipped — the concrete signature of the Möbius / Klein structure. Layer-wise transport is a natural next step.
 
 ---
 
@@ -81,7 +102,7 @@ examples/
 
 | Project | Relationship |
 |---------|--------------|
-| [research / tesseract-medium-geometry.md](https://github.com/Immaculate1022/research/blob/main/tesseract-medium-geometry.md) | Formal specification this code implements |
+| [research / tesseract-medium-geometry.md](https://github.com/Immaculate1022/research/blob/main/tesseract-medium-geometry.md) | Formal specification this code implements (now includes layered + kaleidoscopic extensions) |
 | [moebius-llama](https://github.com/Immaculate1022/moebius-llama) | Self-reflective transformer architecture that uses Möbius + φ ideas; this geometry is a natural substrate |
 | [IOF-Resonance-Core](https://github.com/Immaculate1022/IOF-Resonance-Core) | High-dimensional resonance / topological computing platform |
 | [pegaconstellation-hub](https://github.com/Immaculate1022/pegaconstellation-hub) | Central map and status pulse |
@@ -91,7 +112,8 @@ examples/
 ## Status
 
 - **v0.1** — Minimal working substrate: lattice, dynamics, orientation tracker, three examples. **Verified runnable.**
-- Further mathematical formalization and performance-oriented ports are open under the AI-first maintenance model.
+- Geometric vision extended (2026-08-26): infinite kaleidoscopic branching with mirrors + layered multi-sheet medium at arbitrary angles with non-interfering variance.
+- Further mathematical formalization, visualization modes that realize the layered/kaleidoscopic aesthetic, and performance-oriented ports are open under the AI-first maintenance model.
 
 ---
 
