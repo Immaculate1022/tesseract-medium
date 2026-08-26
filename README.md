@@ -28,25 +28,25 @@ This repository is the **runnable substrate**. It turns the abstract object into
 | Orientation-aware state transport | Parallel-transport monodromy tracker (`orientation.py`) |
 | Immediate visual feedback | Möbius-twisted Mandelbrot / Julia slices (`dynamics.py` + examples) |
 | Reusable geometric kernel | Clean modules other PegaConstellation projects can import |
-| Infinite self-similar branching | Target aesthetic & future extension: kaleidoscopic mirrors at every vertex |
-| Multi-layer non-interfering medium | Target aesthetic & future extension: angled sheets with small variance |
+| Infinite self-similar branching | `TesseractLattice.kaleidoscope_branch()` + `mirror_points()` |
+| Multi-layer non-interfering medium | `LayeredTesseractMedium` — angled sheets with controlled variance |
 
 ---
 
-## Geometric Vision (updated 2026-08-26)
+## Geometric Vision (implemented v0.2)
 
 ### Infinite Kaleidoscopic Branching + Mirrors
-At every vertex the structure branches kaleidoscopically, spawning recursive mirror images of the local tesseract neighborhood. Branches continue infinitely, producing a fractal web of hypercubes and their reflections that remains compatible with the global Möbius / Klein orientation rules.
+At every vertex the structure can branch kaleidoscopically, spawning recursive mirror images of the local tesseract neighborhood. The `kaleidoscope_branch` and `mirror_points` helpers generate these sets; further recursive depth is straightforward to add.
 
 ### Layered Multi-Sheet Medium
 The complete geometry is realized as a stack of slightly offset sheets — analogous to a fanned pack of translucent paper:
 
-- Each sheet carries a full tesseract + mirror + kaleidoscopic structure.
-- Sheets may be tilted at any chosen angles.
-- Small positional / rotational / shear variance ensures no two sheets occupy identical coordinates.
+- Each sheet is a full `TesseractLattice`.
+- Sheets are tilted across a configurable angular span.
+- Small positional variance ensures no two sheets occupy identical coordinates.
 - Result: dense volumetric presence without destructive interference. Orientation transport and hierarchical keys stay clean on every layer.
 
-These ideas are now part of the formal specification and serve as the visual and structural targets for ongoing development of the lattice, dynamics, and visualization modules.
+Use `LayeredTesseractMedium` and the layered projection helpers in `visualize.py`.
 
 ---
 
@@ -61,13 +61,20 @@ pip install numpy matplotlib
 python examples/mandelbrot_slice.py
 python examples/fibonacci_lattice_walk.py
 python examples/orientation_demo.py
+python examples/layered_medium_demo.py   # new in v0.2
 ```
 
-### Verified results (v0.1)
+### Verified results
 
-- **Orientation demo** — loop crossing the twist seam reverses orientation (`sign = −1`); control loop away from the seam preserves orientation (`sign = +1`).
-- **Lattice** — depth-2 φ/Fibonacci subdivision yields 625 points; hierarchical indices are stable and usable as storage keys.
-- **Dynamics** — classical and Möbius-twisted Mandelbrot slices render successfully to PNG.
+**v0.1**
+- Orientation demo — loop crossing the twist seam reverses orientation (`sign = −1`); control loop away from the seam preserves orientation (`sign = +1`).
+- Lattice — depth-2 φ/Fibonacci subdivision yields 625 points; hierarchical indices are stable and usable as storage keys.
+- Dynamics — classical and Möbius-twisted Mandelbrot slices render successfully to PNG.
+
+**v0.2**
+- `LayeredTesseractMedium` constructs multi-sheet stacks with angular fan + variance.
+- Kaleidoscopic / mirror helpers available on every lattice.
+- New example `layered_medium_demo.py` writes both a layered projection and a kaleidoscope branch image.
 
 ---
 
@@ -76,21 +83,25 @@ python examples/orientation_demo.py
 ```
 tesseract_medium/
   __init__.py
-  lattice.py          # Unit tesseract + φ / Fibonacci recursive subdivision
+  lattice.py          # Unit tesseract + φ / Fibonacci subdivision
+                      # + LayeredTesseractMedium + kaleidoscope helpers
   dynamics.py         # Möbius-composed quadratic maps (Mandelbrot / Julia)
   orientation.py      # Simple monodromy / orientation-flip tracker
-  visualize.py        # 2D rendering helpers
+  visualize.py        # 2D/3D rendering helpers (incl. layered projections)
 examples/
   mandelbrot_slice.py
   fibonacci_lattice_walk.py
   orientation_demo.py
+  layered_medium_demo.py   # new
 ```
 
 ---
 
 ## Core ideas in code
 
-**Lattice** — A discrete 4D hypercube whose edges and cells can be subdivided by successive Fibonacci ratios or pure powers of φ. This is the spatial medium. Future extensions will support kaleidoscopic branching operators and multi-sheet layering with angular/positional variance.
+**Lattice** — A discrete 4D hypercube whose edges and cells can be subdivided by successive Fibonacci ratios or pure powers of φ. Supports mirror reflection and kaleidoscopic branching operators.
+
+**LayeredTesseractMedium** — A stack of lattices rotated through an angular span and given small random offsets so that layers never coincide. Provides `layer_points`, `all_points`, and 3D projection helpers.
 
 **Dynamics** — Iteration of the form `z ↦ M(z² + c)` where `M` is a Möbius transformation. Classic Mandelbrot / Julia sets appear as 2D slices; the Möbius map injects controlled twist / inversion.
 
@@ -102,7 +113,7 @@ examples/
 
 | Project | Relationship |
 |---------|--------------|
-| [research / tesseract-medium-geometry.md](https://github.com/Immaculate1022/research/blob/main/tesseract-medium-geometry.md) | Formal specification this code implements (now includes layered + kaleidoscopic extensions) |
+| [research / tesseract-medium-geometry.md](https://github.com/Immaculate1022/research/blob/main/tesseract-medium-geometry.md) | Formal specification this code implements (layered + kaleidoscopic extensions) |
 | [moebius-llama](https://github.com/Immaculate1022/moebius-llama) | Self-reflective transformer architecture that uses Möbius + φ ideas; this geometry is a natural substrate |
 | [IOF-Resonance-Core](https://github.com/Immaculate1022/IOF-Resonance-Core) | High-dimensional resonance / topological computing platform |
 | [pegaconstellation-hub](https://github.com/Immaculate1022/pegaconstellation-hub) | Central map and status pulse |
@@ -111,9 +122,9 @@ examples/
 
 ## Status
 
-- **v0.1** — Minimal working substrate: lattice, dynamics, orientation tracker, three examples. **Verified runnable.**
-- Geometric vision extended (2026-08-26): infinite kaleidoscopic branching with mirrors + layered multi-sheet medium at arbitrary angles with non-interfering variance.
-- Further mathematical formalization, visualization modes that realize the layered/kaleidoscopic aesthetic, and performance-oriented ports are open under the AI-first maintenance model.
+- **v0.1** — Minimal working substrate: lattice, dynamics, orientation tracker, three examples.
+- **v0.2** (2026-08-26) — `LayeredTesseractMedium`, kaleidoscopic / mirror helpers, layered visualization, new demo example. Version bumped to 0.2.0.
+- Further mathematical formalization, deeper recursive branching, full SO(4) rotations, and performance-oriented ports remain open under the AI-first maintenance model.
 
 ---
 
