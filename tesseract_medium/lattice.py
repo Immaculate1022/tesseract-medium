@@ -1,15 +1,21 @@
 """
-4D tesseract lattice with Fibonacci / golden-ratio recursive subdivision.
+4D tesseract lattice with Fibonacci / golden-ratio recursive subdivision,
+infinite kaleidoscopic branching helpers, and layered multi-sheet medium.
 
 Provides a discrete spatial medium that can be used for hierarchical
 indexing, adjacency queries, and as the ambient space for orientation
 transport and dynamical slices.
+
+New in this version:
+  - LayeredTesseractMedium: stack of sheets at arbitrary angles with
+    controlled positional / rotational variance so layers never coincide.
+  - Simple kaleidoscopic / mirror point generators for fractal branching.
 """
 
 from __future__ import annotations
 
 import itertools
-from typing import Iterable, List, Sequence, Tuple
+from typing import Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -142,3 +148,156 @@ class TesseractLattice:
                     break
             indices.append(idx)
         return tuple(indices)
+
+    # ------------------------------------------------------------------
+    # Kaleidoscopic / mirror helpers
+    # ------------------------------------------------------------------
+    def mirror_points(self, axis: int = 0) -> np.ndarray:
+        """
+        Return a mirrored copy of the lattice points reflected across
+        the mid-hyperplane of the chosen axis (default w = 0.5).
+        This is the elementary building block of kaleidoscopic branching.
+        """
+        pts = self.as_array().copy()
+        pts[:, axis] = 1.0 - pts[:, axis]
+        return pts
+
+    def kaleidoscope_branch(
+        self,
+        center: Optional[Sequence[float]] = None,
+        scale: float = 1.0 / PHI,
+        n_mirrors: int = 4,
+    ) -> np.ndarray:
+        """
+        Generate a simple kaleidoscopic branch set around a center point.
+
+        Starts from the lattice points, scales them toward `center` by
+        `scale`, then produces `n_mirrors` reflected copies. Returns an
+        (M, 4) array of points that can be used for fractal visualization
+        or as seeds for further recursive branching.
+        """
+        pts = self.as_array()
+        if center is None:
+            center = np.array([0.5, 0.5, 0.5, 0.5])
+        else:
+            center = np.asarray(center, dtype=np.float64)
+
+        # Contract toward center
+        contracted = center + scale * (pts - center)
+
+        branches = [contracted]
+        for k in range(1, n_mirrors):
+            # Cycle reflections across successive axes for a kaleidoscope effect
+            axis = k % 4
+            mirrored = contracted.copy()
+            mirrored[:, axis] = 2.0 * center[axis] - mirrored[:, axis]
+            branches.append(mirrored)
+
+        return np.vstack(branches)
+
+
+class LayeredTesseractMedium:
+    """
+    Multi-sheet tesseract medium: a stack of TesseractLattice instances
+    placed at arbitrary angles with controlled variance so that layers
+    never occupy identical coordinates (non-interfering pack-of-paper model).
+
+    Each sheet is an independent lattice that can carry its own orientation
+    and dynamics. The collection forms a dense volumetric medium while
+    remaining geometrically distinct layer-by-layer.
+    """
+
+    def __init__(
+        self,
+        n_layers: int = 5,
+        depth: int = 1,
+        use_fibonacci_ratios: bool = True,
+        angle_span_deg: float = 25.0,
+        variance: float = 0.03,
+        seed: Optional[int] = 42,
+    ):
+        """
+        Parameters
+        ----------
+        n_layers :
+            Number of sheets in the stack.
+        depth :
+            Subdivision depth for each individual lattice.
+        use_fibonacci_ratios :
+            Passed through to each TesseractLattice.
+        angle_span_deg :
+            Total angular fan (degrees) across which the sheets are tilted.
+            Sheets are spaced evenly within [-span/2, +span/2].
+        variance :
+            Maximum random translational offset (in lattice units) applied
+            independently to each sheet so they never perfectly coincide.
+        seed :
+            RNG seed for reproducible variance. None → non-deterministic.
+        """
+        self.n_layers = max(1, int(n_layers))
+        self.depth = depth
+        self.use_fibonacci_ratios = use_fibonacci_ratios
+        self.angle_span_deg = float(angle_span_deg)
+        self.variance = float(variance)
+        self.seed = seed
+
+        rng = np.random.default_rng(seed)
+
+        self.layers: List[TesseractLattice] = []
+        self.rotations: List[np.ndarray] = []   # 4×4 rotation matrices
+        self.offsets: List[np.ndarray] = []     # 4-vectors
+
+        if self.n_layers == 1:
+            angles = [0.0]
+        else:
+            angles = np.linspace(
+                -angle_span_deg / 2.0, angle_span_deg / 2.0, self.n_layers
+            )
+
+        for i, ang_deg in enumerate(angles):
+            lat = TesseractLattice(depth=depth, use_fibonacci_ratios=use_fibonacci_ratios)
+            self.layers.append(lat)
+
+            # Simple rotation in the (x,y) plane (extendable to full SO(4))
+            theta = np.deg2rad(ang_deg)
+            c, s = np.cos(theta), np.sin(theta)
+            R = np.eye(4)
+            R[1, 1] = c
+            R[1, 2] = -s
+            R[2, 1] = s
+            R[2, 2] = c
+            self.rotations.append(R)
+
+            # Small random translational variance
+            off = rng.uniform(-variance, variance, size=4)
+            self.offsets.append(off)
+
+    def __len__(self) -> int:
+        return sum(len(layer) for layer in self.layers)
+
+    def layer_points(self, layer_idx: int) -> np.ndarray:
+        """Return the transformed (rotated + offset) points of one sheet."""
+        pts = self.layers[layer_idx].as_array()
+        R = self.rotations[layer_idx]
+        off = self.offsets[layer_idx]
+        # Center → rotate → un-center → offset
+        center = np.array([0.5, 0.5, 0.5, 0.5])
+        centered = pts - center
+        rotated = (R @ centered.T).T + center + off
+        return rotated
+
+    def all_points(self) -> np.ndarray:
+        """Concatenate transformed points from every layer."""
+        return np.vstack([self.layer_points(i) for i in range(self.n_layers)])
+
+    def project_3d(self, drop_axis: int = 3) -> np.ndarray:
+        """Orthographic 3D projection of the entire layered medium."""
+        pts = self.all_points()
+        keep = [i for i in range(4) if i != drop_axis]
+        return pts[:, keep]
+
+    def project_layer_3d(self, layer_idx: int, drop_axis: int = 3) -> np.ndarray:
+        """3D projection of a single sheet."""
+        pts = self.layer_points(layer_idx)
+        keep = [i for i in range(4) if i != drop_axis]
+        return pts[:, keep]
