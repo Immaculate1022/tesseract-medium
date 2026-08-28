@@ -9,6 +9,7 @@ existing 4D/5D geometric substrate:
 - Simple contractions and einsum helpers
 - Reflection / mirror operators as involutory tensors
 - Hierarchical indexing via multi-linear maps
+- Distance-preserving checks and lattice integration helpers
 
 Backend: NumPy. Designed to be lightweight and immediately usable by
 lattice.py, orientation.py, and the penteract kaleidoscope.
@@ -17,7 +18,7 @@ lattice.py, orientation.py, and the penteract kaleidoscope.
 from __future__ import annotations
 
 import itertools
-from typing import Iterable, List, Optional, Sequence, Tuple, Union
+from typing import List, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -55,7 +56,11 @@ def tensor_product(*arrays: np.ndarray) -> np.ndarray:
     return result
 
 
-def contract(a: np.ndarray, b: np.ndarray, axes: Union[int, Tuple[int, int]] = -1) -> np.ndarray:
+def contract(
+    a: np.ndarray,
+    b: np.ndarray,
+    axes: Union[int, Tuple[int, int]] = -1,
+) -> np.ndarray:
     """
     Simple contraction of the last axis of `a` with the first axis of `b`
     (or an explicit pair of axes).
@@ -100,7 +105,7 @@ def so_n_rotation(dim: int, angles: Sequence[float]) -> np.ndarray:
     dim : int
         Ambient dimension (4 for tesseract, 5 for penteract, …).
     angles : sequence of float
-        Length must equal C(dim, 2). Missing angles are treated as 0.
+        Length should equal C(dim, 2). Missing angles are treated as 0.
 
     Returns
     -------
@@ -109,14 +114,26 @@ def so_n_rotation(dim: int, angles: Sequence[float]) -> np.ndarray:
     """
     planes = list(itertools.combinations(range(dim), 2))
     n_planes = len(planes)
+    angles = list(angles)
     if len(angles) < n_planes:
-        angles = list(angles) + [0.0] * (n_planes - len(angles))
+        angles = angles + [0.0] * (n_planes - len(angles))
 
     R = np.eye(dim)
     for (i, j), theta in zip(planes, angles):
         if abs(theta) > 1e-15:
             R = plane_rotation_matrix(dim, i, j, theta) @ R
     return R
+
+
+def is_special_orthogonal(R: np.ndarray, tol: float = 1e-9) -> bool:
+    """Return True if R is (approximately) in SO(n)."""
+    R = as_tensor(R)
+    if R.ndim != 2 or R.shape[0] != R.shape[1]:
+        return False
+    return (
+        np.allclose(R @ R.T, np.eye(R.shape[0]), atol=tol)
+        and abs(np.linalg.det(R) - 1.0) < tol
+    )
 
 
 def rotate_points(points: np.ndarray, R: np.ndarray) -> np.ndarray:
@@ -132,6 +149,20 @@ def rotate_points(points: np.ndarray, R: np.ndarray) -> np.ndarray:
     return points @ R.T
 
 
+def rotate_lattice_points(
+    points: np.ndarray,
+    angles: Sequence[float],
+    dim: int = 4,
+) -> np.ndarray:
+    """
+    Convenience: build an SO(dim) rotation from angles and apply it to a
+    cloud of lattice points. This is the primary bridge from the tensor
+    layer into TesseractLattice / LayeredTesseractMedium point sets.
+    """
+    R = so_n_rotation(dim, angles)
+    return rotate_points(points, R)
+
+
 # ---------------------------------------------------------------------------
 # Reflection / mirror tensors (involutions)
 # ---------------------------------------------------------------------------
@@ -139,7 +170,7 @@ def rotate_points(points: np.ndarray, R: np.ndarray) -> np.ndarray:
 def reflection_tensor(dim: int, axis: int) -> np.ndarray:
     """
     Householder-style reflection across the hyperplane orthogonal to the
-    given coordinate axis. Satisfies R @ R = I.
+    given coordinate axis. Satisfies R @ R = I and det = -1.
     """
     R = np.eye(dim)
     R[axis, axis] = -1.0
@@ -154,6 +185,12 @@ def mirror_operator(dim: int, normal: ArrayLike) -> np.ndarray:
     n = as_tensor(normal)
     n = n / (np.linalg.norm(n) + 1e-15)
     return np.eye(dim) - 2.0 * np.outer(n, n)
+
+
+def is_involution(M: np.ndarray, tol: float = 1e-9) -> bool:
+    """Return True if M @ M ≈ I."""
+    M = as_tensor(M)
+    return np.allclose(M @ M, np.eye(M.shape[0]), atol=tol)
 
 
 # ---------------------------------------------------------------------------
@@ -205,11 +242,9 @@ def hierarchical_index_tensor(
     it already lets downstream code treat hierarchical lattice keys as
     ordinary vectors that can be rotated, reflected, and contracted.
     """
-    # Simple φ-weighted embedding of integer coordinates
     coords = as_tensor(levels, dtype=np.float64)
     n = len(coords)
     weights = np.array([PHI ** (-k) for k in range(n)])
-    # Pad or project to base_dim
     if n >= base_dim:
         return (coords * weights)[:base_dim]
     out = np.zeros(base_dim)
@@ -231,7 +266,7 @@ def parallel_transport_step(
     displacement `delta` under a connection form `connection`.
 
     frame      : (dim, dim)   current orthonormal frame (columns = basis vectors)
-    connection : (dim, dim, dim)  or a simpler (dim, dim) matrix for the step
+    connection : (dim, dim) matrix  or  (dim, dim, dim) Christoffel-style tensor
     delta      : (dim,) displacement vector
 
     Returns the transported frame (still approximately orthonormal).
@@ -240,14 +275,11 @@ def parallel_transport_step(
     delta = as_tensor(delta)
 
     if connection.ndim == 2:
-        # Simple matrix connection: Γ · δ
         omega = connection @ delta
-        # Infinitesimal rotation generated by the skew-symmetric part
         skew = 0.5 * (omega - omega.T)
-        # Approximate exp(skew) ≈ I + skew
         return frame + frame @ skew
 
-    # Full Christoffel-style (dim, dim, dim) – contract last index with delta
+    # Full (dim, dim, dim) – contract last index with delta
     omega = np.einsum("ijk,k->ij", connection, delta)
     skew = 0.5 * (omega - omega.T)
     return frame + frame @ skew
@@ -272,13 +304,20 @@ def penteract_rotation(angles: Sequence[float]) -> np.ndarray:
     return so_n_rotation(5, angles)
 
 
-def phi_harmonic_angles(time: float, dim: int = 4, speed: float = 1.0) -> List[float]:
+def phi_harmonic_angles(
+    time: float,
+    dim: int = 4,
+    speed: float = 1.0,
+) -> List[float]:
     """
     Generate a set of plane angles whose frequencies are successive powers
     of φ — the same harmonic family used by the kaleidoscope engines.
     """
     n_planes = dim * (dim - 1) // 2
-    return [time * speed * 0.2 * (PHI ** (i * 0.35)) for i in range(n_planes)]
+    return [
+        time * speed * 0.2 * (PHI ** (i * 0.35))
+        for i in range(n_planes)
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -294,9 +333,12 @@ __all__ = [
     "einsum",
     "plane_rotation_matrix",
     "so_n_rotation",
+    "is_special_orthogonal",
     "rotate_points",
+    "rotate_lattice_points",
     "reflection_tensor",
     "mirror_operator",
+    "is_involution",
     "phi_scaled_embedding",
     "recursive_kronecker_nest",
     "hierarchical_index_tensor",
