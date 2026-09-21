@@ -20,4 +20,5 @@ jobs:
       - name: Compile everything
         run: python -m compileall -q tesseract_medium examples
       - name: Run tensor-layer demo headless
-        run: MPLBACKEND=Agg python examples/tensor_layer_demo.py
+        # PYTHONPATH: running examples/tensor_layer_demo.py puts examples/ (not repo root) on sys.path
+        run: MPLBACKEND=Agg PYTHONPATH=${{ github.workspace }} python examples/tensor_layer_demo.py
